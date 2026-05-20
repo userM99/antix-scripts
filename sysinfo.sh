@@ -1,7 +1,8 @@
 #!/bin/bash
 # ============================================
-# SYSINFO - Pregled sistema antiX 23.2 x64
+# SYSINFO - Pregled sistema antiX 26 x32
 # RAM | CPU | GPU | Rezolucija | Temperature
+# Prilagođeno za 32-bit (i686) & 2GB RAM
 # Pokreni: bash sysinfo.sh
 # ============================================
 
@@ -34,7 +35,7 @@ fi
 clear
 echo -e "${CYAN}"
 echo "  ╔══════════════════════════════════════════════╗"
-echo "  ║        SISTEM INFO - antiX 23.2 x64          ║"
+echo "  ║        SISTEM INFO - antiX 26 x32            ║"
 echo "  ╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -49,14 +50,20 @@ RAM_UKUPNO=$(free -m | awk 'NR==2{print $2}')
 RAM_ZAUZETO=$(free -m | awk 'NR==2{print $3}')
 RAM_SLOBODNO=$(free -m | awk 'NR==2{print $4}')
 RAM_CACHE=$(free -m | awk 'NR==2{print $6}')
-RAM_PROCENAT=$(( RAM_ZAUZETO * 100 / RAM_UKUPNO ))
+
+# Izbegavanje division by zero greške ako je sistem preopterećen
+if [ "$RAM_UKUPNO" -gt 0 ]; then
+    RAM_PROCENAT=$(( RAM_ZAUZETO * 100 / RAM_UKUPNO ))
+else
+    RAM_PROCENAT=0
+fi
 
 # Progres bar za RAM
 BAR_PUNI=$(( RAM_PROCENAT / 5 ))
 BAR_PRAZNI=$(( 20 - BAR_PUNI ))
 BAR=""
-for i in $(seq 1 $BAR_PUNI);  do BAR="${BAR}█"; done
-for i in $(seq 1 $BAR_PRAZNI); do BAR="${BAR}░"; done
+for i in $(seq 1 $BAR_PUNI 2>/dev/null);  do BAR="${BAR}█"; done
+for i in $(seq 1 $BAR_PRAZNI 2>/dev/null); do BAR="${BAR}░"; done
 
 if   [ $RAM_PROCENAT -lt 50 ]; then BOJA_RAM=$GREEN
 elif [ $RAM_PROCENAT -lt 80 ]; then BOJA_RAM=$YELLOW
@@ -168,14 +175,16 @@ echo -e "  ${WHITE}Model:${NC}     $GPU_MODEL"
 GPU_DRIVER=$(lspci -k 2>/dev/null | grep -A3 -i "vga\|3d\|display" | grep "Kernel driver" | head -1 | awk '{print $NF}')
 [ -n "$GPU_DRIVER" ] && echo -e "  ${WHITE}Driver:${NC}    $GPU_DRIVER"
 
-# VRAM - pokušaj nekoliko metoda
+# VRAM - preciznije računanje za 32-bit sisteme da se izbegne integer overflow
 VRAM=""
 
 # Metoda 1: DRM sysfs (AMD radeon/amdgpu)
 for card in /sys/class/drm/card*/device; do
     if [ -f "$card/mem_info_vram_total" ]; then
         VRAM_B=$(cat "$card/mem_info_vram_total" 2>/dev/null)
-        VRAM_MB=$(( VRAM_B / 1024 / 1024 ))
+        # Deljenje u koracima sprečava overflow greške u 32-bitnom ljusci
+        VRAM_KB=$(( VRAM_B / 1024 ))
+        VRAM_MB=$(( VRAM_KB / 1024 ))
         VRAM="${VRAM_MB} MB"
         break
     fi
