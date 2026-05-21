@@ -1,6 +1,6 @@
 # antix-scripts
-Optimizacija i sysinfo skripte za antiX 23.2 x64
-
-This is only for my antix linux system !!
-Do not clone this repo and do not run scripts,
-You can destroy your system!
+Glad to help all antix user brothers.
+Give the script permission 
+chmod +x /antix-scripts/"script_name".sh
+Run the script as sudo
+sudo bash ./"script_name".sh
